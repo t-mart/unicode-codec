@@ -11,24 +11,30 @@ the standard library `str.encode` or `bytes.decode` functions, but other things 
 True
 ```
 
+## Encoding Schemes Supported
+
 The following schemes are supported:
 
 - `utf-8`
-- `utf-8-sig` (On decode, consume BOM if it exists, otherwise, just do `utf-8`. On encode,
-  prefix with BOM and do normal encode.)
+- `utf-8-sig`
 - `utf-16be`
 - `utf-16le`
-- `utf-16` (On decode, if BOM exists, choose endianness from it, or else assume little-endian.
-  On encode, prefix with little-endian BOM and do little-endian encode.)
+- `utf-16`
 - `utf-32be`
 - `utf-32le`
-- `utf-32` (On decode, if BOM exists, choose endianness from it, or else assume little-endian.
-  On encode, prefix with little-endian BOM and do little-endian encode.)
+- `utf-32`
 
-(Note that when we have to make an assumption for a non-endian-specified scheme (`utf-16`,
-`utf-32`) or choose a decoding endianness for such a scheme, we choose **little**. This is what
-Python appears to do by default. The Unicode standard does not seem to have a strong
-prescription about this. See <https://stackoverflow.com/a/36550597/235992>.)
+When encoding, the `utf-8-sig`, `utf-16`, and `utf-32` schemes prefix their outputs with byte order
+marks. For `utf-16` and `utf-32`, little-endian is chosen automatically.
+
+When decoding, the `utf-8-sig`, `utf-16`, and `utf-32` schemes these remove an initial byte order
+mark from the sequence if one exists (and the decoding respects the endianness of that BOM). If no
+byte order mark exists, little-endian is assumed.
+
+The above affinity for little-endian above is a result of the lack of a prescription by the Unicode
+standard in this circumstance. See <https://stackoverflow.com/a/36550597/235992>.
+
+## Conformance
 
 Additionally, care is taken to ensure
 [conformance](https://www.unicode.org/versions/Unicode14.0.0/ch03.pdf) to

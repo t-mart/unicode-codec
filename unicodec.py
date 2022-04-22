@@ -295,6 +295,10 @@ def encode(string: str, encoding: str) -> bytes:
 
     The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
     utf-32le, utf-32.
+
+    The utf-16 and utf-32 schemes encode as if their little-endian counterpart were
+    specified, but additionally prefix their outputs with an appropriate byte order
+    mark.
     """
     match encoding:
         case "utf-8":
@@ -326,6 +330,10 @@ def decode(buf: bytes, encoding: str) -> str:
 
     The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
     utf-32le, utf-32.
+
+    The utf-16 and utf-32 schemes decode according an initial byte order mark in the
+    sequence if it exists (and removes it from the output). If there is no initial byte
+    order mark, little-endian is assumed.
     """
     match encoding:
         case "utf-8":
