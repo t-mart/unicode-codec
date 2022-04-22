@@ -167,7 +167,7 @@ def _utf8_sig_decode(buf: bytes) -> str:
     return _utf8_decode(buf.removeprefix(_UTF_8_BOM))
 
 
-def _utf16_e_encode(string: str, byteorder: _ByteOrderT = "big") -> bytes:
+def _utf16_e_encode(string: str, byteorder: _ByteOrderT) -> bytes:
     buffer = []
     for char in string:
         codepoint = _ord_only_scalars(char)
@@ -190,7 +190,7 @@ def _utf16_ne_encode(string: str) -> bytes:
     return _UTF_16_LE_BOM + _utf16_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
-def _utf16_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
+def _utf16_e_decode(buf: bytes, byteorder: _ByteOrderT) -> str:
     codepoints = []
     buf_it = iter(buf)
 
@@ -233,7 +233,7 @@ def _utf16_ne_decode(buf: bytes) -> str:
     return _utf16_e_decode(buf, _DEFAULT_BYTE_ORDER)
 
 
-def _utf32_e_encode(string: str, byteorder: _ByteOrderT = "big") -> bytes:
+def _utf32_e_encode(string: str, byteorder: _ByteOrderT) -> bytes:
     buffer = []
     for char in string:
         codepoint = _ord_only_scalars(char)
@@ -250,7 +250,7 @@ def _utf32_ne_encode(string: str) -> bytes:
     return _UTF_32_LE_BOM + _utf32_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
-def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
+def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT) -> str:
     codepoints = []
     buf_it = iter(buf)
 
