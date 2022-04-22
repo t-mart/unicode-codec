@@ -162,9 +162,7 @@ def _utf8_decode(buf: bytes) -> str:
 
 def _utf8_sig_decode(buf: bytes) -> str:
     """Remove the BOM if its there. Otherwise, decode as normal."""
-    if buf[:3] == _UTF_8_BOM:
-        return _utf8_decode(buf[3:])
-    return _utf8_decode(buf)
+    return _utf8_decode(buf.removeprefix(_UTF_8_BOM))
 
 
 def _utf16_e_encode(string: str, byteorder: _ByteOrderT = "big") -> bytes:
@@ -226,10 +224,10 @@ def _utf16_ne_decode(buf: bytes) -> str:
     in this case. See: https://stackoverflow.com/a/36550597/235992. I'm just following
     the Python stdlib.)
     """
-    if buf[:2] == _UTF_16_LE_BOM:
-        return _utf16_e_decode(buf[2:], "little")
-    if buf[:2] == _UTF_16_BE_BOM:
-        return _utf16_e_decode(buf[2:], "big")
+    if buf.startswith(_UTF_16_LE_BOM):
+        return _utf16_e_decode(buf.removeprefix(_UTF_16_LE_BOM), "little")
+    if buf.startswith(_UTF_16_BE_BOM):
+        return _utf16_e_decode(buf.removeprefix(_UTF_16_BE_BOM), "big")
     return _utf16_e_decode(buf, "little")
 
 
@@ -280,10 +278,10 @@ def _utf32_ne_decode(buf: bytes) -> str:
     in this case. See: https://stackoverflow.com/a/36550597/235992. I'm just following
     the Python stdlib.)
     """
-    if buf[:4] == _UTF_32_LE_BOM:
-        return _utf32_e_decode(buf[4:], "little")
-    if buf[:4] == _UTF_32_BE_BOM:
-        return _utf32_e_decode(buf[4:], "big")
+    if buf.startswith(_UTF_32_LE_BOM):
+        return _utf32_e_decode(buf.removeprefix(_UTF_32_LE_BOM), "little")
+    if buf.startswith(_UTF_32_BE_BOM):
+        return _utf32_e_decode(buf.removeprefix(_UTF_32_BE_BOM), "big")
     return _utf32_e_decode(buf, "little")
 
 
