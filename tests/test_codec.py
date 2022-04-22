@@ -1,7 +1,13 @@
 """Tests for unicodec"""
 import pytest
 
-from unicodec import UnicodeDecodeException, UnicodeEncodeException, decode, encode
+from unicodec import (
+    DecodeException,
+    EncodeException,
+    UnsupportedEncodingException,
+    decode,
+    encode,
+)
 
 ENCODINGS = [
     "utf-8",
@@ -33,13 +39,13 @@ UTF_32_BE_BOM = b"\x00\x00\xfe\xff"
 
 def test_decode_unknown_encoding() -> None:
     """Test that decoding with an unknown scheme throws an exception."""
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(UnsupportedEncodingException):
         decode(b"\x12", "utf-9000")
 
 
 def test_encode_unknown_encoding() -> None:
     """Test that encoding with an unknown scheme throws an exception."""
-    with pytest.raises(UnicodeEncodeException):
+    with pytest.raises(UnsupportedEncodingException):
         encode("foo", "utf-9000")
 
 
@@ -76,7 +82,7 @@ def test_encode_surrogate_not_allowed(encoding: str) -> None:
         "\U0000DFFF",
     ]
     for surrogate in surrogates:
-        with pytest.raises(UnicodeEncodeException):
+        with pytest.raises(EncodeException):
             encode(surrogate, encoding)
 
 
@@ -100,7 +106,7 @@ def test_utf8_decode_invalid_cont_bytes(sequence: tuple[int, ...]) -> None:
     Test that an exception is thrown when the continuation bytes in a UTF-8 sequence are
     invalid
     """
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(bytes(sequence), "utf-8")
 
 
@@ -113,7 +119,7 @@ def test_utf8_decode_unnecessary_two_unit(first_unit: int) -> None:
     See Table 3-7 of https://www.unicode.org/versions/Unicode14.0.0/ch03.pdf.
     """
     sequence = bytes([first_unit, 0x80])
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -126,7 +132,7 @@ def test_utf8_decode_unnecessary_three_unit(second_unit: int) -> None:
     See Table 3-7 of https://www.unicode.org/versions/Unicode14.0.0/ch03.pdf.
     """
     sequence = bytes([0xE0, second_unit, 0x80])
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -139,7 +145,7 @@ def test_utf8_decode_unnecessary_four_unit(second_unit: int) -> None:
     See Table 3-7 of https://www.unicode.org/versions/Unicode14.0.0/ch03.pdf.
     """
     sequence = bytes([0xF0, second_unit, 0x80, 0x80])
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -147,7 +153,7 @@ def test_utf8_decode_unnecessary_four_unit(second_unit: int) -> None:
 def test_utf8_decode_surrogate(second_unit: int) -> None:
     """Test that an exception is thrown when attempting to decode a surrogate"""
     sequence = bytes([0xED, second_unit, 0x80])
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -160,7 +166,7 @@ def test_utf8_decode_unit_too_large() -> None:
     """
 
     sequence = bytes([0xF4, 0x90, 0x80, 0x80])
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -177,7 +183,7 @@ def test_utf8_decode_unit_too_large() -> None:
 )
 def test_utf8_decode_missing_continuation(sequence: bytes) -> None:
     """Tests that missing bytes of utf-8 throw an exception"""
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, "utf-8")
 
 
@@ -212,21 +218,21 @@ def test_utf16_decode_lone_surrogate() -> None:
     exception.
     """
     for surrogate in range(0xD800, 0xE000):
-        with pytest.raises(UnicodeDecodeException):
+        with pytest.raises(DecodeException):
             decode(surrogate.to_bytes(2, "big"), "utf-16be")
-        with pytest.raises(UnicodeDecodeException):
+        with pytest.raises(DecodeException):
             decode(surrogate.to_bytes(2, "little"), "utf-16le")
 
 
 @pytest.mark.parametrize(
     "sequence,encoding",
     [
-        (b"\xdc\x37\xdc\x37", "utf-16-be"),  # high surrogate bad
-        (b"\x37\xdc\x37\xdc", "utf-16-le"),  # high surrogate bad
-        (b"\xd8\x37\xd8\x37", "utf-16-be"),  # low surrogate bad
-        (b"\x37\xd8\x37\xd8", "utf-16-le"),  # low surrogate bad
-        (b"\xdc\x37\xd8\x37", "utf-16-be"),  # both surrogate bad
-        (b"\x37\xdc\x37\xd8", "utf-16-le"),  # both surrogate bad
+        (b"\xdc\x37\xdc\x37", "utf-16be"),  # high surrogate bad
+        (b"\x37\xdc\x37\xdc", "utf-16le"),  # high surrogate bad
+        (b"\xd8\x37\xd8\x37", "utf-16be"),  # low surrogate bad
+        (b"\x37\xd8\x37\xd8", "utf-16le"),  # low surrogate bad
+        (b"\xdc\x37\xd8\x37", "utf-16be"),  # both surrogate bad
+        (b"\x37\xdc\x37\xd8", "utf-16le"),  # both surrogate bad
     ],
 )
 def test_utf16_decode_bad_surrogate(sequence: bytes, encoding: str) -> None:
@@ -234,7 +240,7 @@ def test_utf16_decode_bad_surrogate(sequence: bytes, encoding: str) -> None:
     Tests that missing bytes of utf-16 (a surrogate without a partner) throw an
     exception.
     """
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode(sequence, encoding)
 
 
@@ -268,17 +274,17 @@ def test_utf16_encode_with_bom() -> None:
 def test_utf32_decode_surrogate() -> None:
     """Ensure decoding a surrogate throws an exception for utf32"""
     for surrogate in range(0xD800, 0xE000):
-        with pytest.raises(UnicodeDecodeException):
+        with pytest.raises(DecodeException):
             decode(surrogate.to_bytes(4, "big"), "utf-32be")
-        with pytest.raises(UnicodeDecodeException):
+        with pytest.raises(DecodeException):
             decode(surrogate.to_bytes(4, "little"), "utf-32le")
 
 
 def test_utf32_decode_too_large() -> None:
     """Ensure decoding a surrogate throws an exception for utf32"""
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode((0x11_0000).to_bytes(4, "big"), "utf-32be")
-    with pytest.raises(UnicodeDecodeException):
+    with pytest.raises(DecodeException):
         decode((0x11_0000).to_bytes(4, "little"), "utf-32le")
 
 

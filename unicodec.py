@@ -23,12 +23,16 @@ class UnicodeException(Exception):
     """Base class for exceptions"""
 
 
-class UnicodeDecodeException(UnicodeException):
+class DecodeException(UnicodeException):
     """Indicates an issue in decoding"""
 
 
-class UnicodeEncodeException(UnicodeException):
+class EncodeException(UnicodeException):
     """Indicates an issue in encoding"""
+
+
+class UnsupportedEncodingException(UnicodeException):
+    """Indicates unsupported (or unknown) encoding has been specified"""
 
 
 def _get_unit(
@@ -37,7 +41,7 @@ def _get_unit(
     try:
         the_bytes = [next(iterator) for _ in range(unit_byte_count)]
     except StopIteration as stop_iteration:
-        raise UnicodeDecodeException(
+        raise DecodeException(
             "Invalid encoding, expected more bytes"
         ) from stop_iteration
 
@@ -47,14 +51,14 @@ def _get_unit(
 def _ord_only_scalars(char: str) -> int:
     scalar = ord(char)
     if 0xD800 <= scalar <= 0xDFFF:
-        raise UnicodeEncodeException("Surrogates not allowed")
+        raise EncodeException("Surrogates not allowed")
     return scalar
 
 
 def _check_valid_continuation(*units: int) -> None:
     for unit in units:
         if unit < 0b1000_0000 or unit > 0b1011_1111:
-            raise UnicodeDecodeException("Invalid continuation byte")
+            raise DecodeException("Invalid continuation byte")
 
 
 def _utf8_encode(string: str) -> bytes:
@@ -92,7 +96,7 @@ def _utf8_decode(buf: bytes) -> str:
     while True:
         try:
             unit1 = _get_unit(buf_it, 1)
-        except UnicodeDecodeException:
+        except DecodeException:
             break  # if we're here, we've decoded a number of complete codepoints
 
         if unit1 & 0b1000_0000 == 0:
@@ -113,11 +117,11 @@ def _utf8_decode(buf: bytes) -> str:
 
             # ill-formed cases
             if unit1 == 0xE0 and unit2 < 0xA0:
-                raise UnicodeDecodeException(
+                raise DecodeException(
                     f"Unnecessary 3 code unit sequence: {(unit1, unit2, unit3)}"
                 )
             if unit1 == 0xED and unit2 > 0x9F:
-                raise UnicodeDecodeException(
+                raise DecodeException(
                     f"Code units decode to surrogate: {(unit1, unit2, unit3)}"
                 )
 
@@ -134,11 +138,11 @@ def _utf8_decode(buf: bytes) -> str:
 
             # ill-formed cases
             if unit1 == 0xF0 and unit2 < 0x90:
-                raise UnicodeDecodeException(
+                raise DecodeException(
                     f"Unnecessary 4 code unit sequence: {(unit1, unit2, unit3, unit4)}"
                 )
             if unit1 == 0xF4 and unit2 > 0x8F:
-                raise UnicodeDecodeException(
+                raise DecodeException(
                     f"Codepoint out of Unicode range: {(unit1, unit2, unit3, unit4)}"
                 )
 
@@ -151,9 +155,7 @@ def _utf8_decode(buf: bytes) -> str:
             codepoints.append(codepoint)
             continue
         else:
-            raise UnicodeDecodeException(
-                "Ill-formed leading code unit of utf-8 sequence"
-            )
+            raise DecodeException("Ill-formed leading code unit of utf-8 sequence")
 
     return "".join(chr(codepoint) for codepoint in codepoints)
 
@@ -195,20 +197,20 @@ def _utf16_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
     while True:
         try:
             unit1 = _get_unit(buf_it, 2, byteorder=byteorder)
-        except UnicodeDecodeException:
+        except DecodeException:
             break  # if we're here, we're finished processing the buffer
 
         if 0xD800 <= unit1 <= 0xDC00:
             unit2 = _get_unit(buf_it, 2, byteorder=byteorder)
             if unit2 < 0xDC00 or unit2 > 0xDFFF:
-                raise UnicodeDecodeException("Invalid low surrogate")
+                raise DecodeException("Invalid low surrogate")
             codepoint = (
                 0x10000 + ((unit1 & 0b11_1111_1111) << 10) + (unit2 & 0b11_1111_1111)
             )
 
             codepoints.append(codepoint)
         elif 0xDC00 <= unit1 <= 0xDFFF:
-            raise UnicodeDecodeException("Invalid high surrogate")
+            raise DecodeException("Invalid high surrogate")
         else:
             codepoints.append(unit1)
 
@@ -255,14 +257,14 @@ def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
     while True:
         try:
             codepoint = _get_unit(buf_it, 4, byteorder=byteorder)
-        except UnicodeDecodeException:
+        except DecodeException:
             break  # if we're here, we're finished processing the buffer
 
         # ill-formed cases
         if 0xD800 <= codepoint <= 0xDFFF:
-            raise UnicodeDecodeException(f"Can't decode surrogate {hex(codepoint)}")
+            raise DecodeException(f"Can't decode surrogate {hex(codepoint)}")
         if 0x10FFFF < codepoint:
-            raise UnicodeDecodeException(f"Codepoint too large: {hex(codepoint)}")
+            raise DecodeException(f"Codepoint too large: {hex(codepoint)}")
 
         codepoints.append(codepoint)
 
@@ -312,7 +314,7 @@ def encode(string: str, encoding: str) -> bytes:
         case "utf-32":
             enc = _utf32_ne_encode(string)
         case _:
-            raise UnicodeEncodeException(f"Unknown encoding {encoding}")
+            raise UnsupportedEncodingException(f"Unknown encoding {encoding}")
     return enc
 
 
@@ -343,5 +345,5 @@ def decode(buf: bytes, encoding: str) -> str:
         case "utf-32":
             dec = _utf32_ne_decode(buf)
         case _:
-            raise UnicodeDecodeException(f"Unknown encoding {encoding}")
+            raise UnsupportedEncodingException(f"Unknown encoding {encoding}")
     return dec
