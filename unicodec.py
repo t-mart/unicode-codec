@@ -285,41 +285,57 @@ def _utf32_ne_decode(buf: bytes) -> str:
     return _utf32_e_decode(buf, "little")
 
 
-def encode(s: str, encoding: str) -> bytes:
+def encode(string: str, encoding: str) -> bytes:
+    """
+    Encode a string with a Unicode encoding into bytes. A UnicodeEncodeException is
+    thrown if the encoding cannot be performed for some reason or if the encoding is not
+    supported.
+
+    The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
+    utf-32le, utf-32.
+    """
     if encoding == "utf-8":
-        return _utf8_encode(s)
+        return _utf8_encode(string)
     if encoding == "utf-8-sig":
-        return _utf8_sig_encode(s)
-    elif encoding == "utf-16be":
-        return _utf16_e_encode(s, "big")
-    elif encoding == "utf-16le":
-        return _utf16_e_encode(s, "little")
-    elif encoding == "utf-16":
-        return _utf16_ne_encode(s)
-    elif encoding == "utf-32be":
-        return _utf32_e_encode(s, "big")
-    elif encoding == "utf-32le":
-        return _utf32_e_encode(s, "little")
-    elif encoding == "utf-32":
-        return _utf32_ne_encode(s)
-    raise UnicodeEncodeException(f"unknown encoding {encoding}")
+        return _utf8_sig_encode(string)
+    if encoding == "utf-16be":
+        return _utf16_e_encode(string, "big")
+    if encoding == "utf-16le":
+        return _utf16_e_encode(string, "little")
+    if encoding == "utf-16":
+        return _utf16_ne_encode(string)
+    if encoding == "utf-32be":
+        return _utf32_e_encode(string, "big")
+    if encoding == "utf-32le":
+        return _utf32_e_encode(string, "little")
+    if encoding == "utf-32":
+        return _utf32_ne_encode(string)
+    raise UnicodeEncodeException(f"Unknown encoding {encoding}")
 
 
 def decode(buf: bytes, encoding: str) -> str:
+    """
+    Decode a bytes sequence in a Unicode encoding into a string. A
+    UnicodeDecodeException is thrown if the decoding cannot be performed for some reason
+    or if the encoding is not supported.
+
+    The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
+    utf-32le, utf-32.
+    """
     if encoding == "utf-8":
         return _utf8_decode(buf)
     if encoding == "utf-8-sig":
         return _utf8_sig_decode(buf)
-    elif encoding == "utf-16be":
+    if encoding == "utf-16be":
         return _utf16_e_decode(buf, "big")
-    elif encoding == "utf-16le":
+    if encoding == "utf-16le":
         return _utf16_e_decode(buf, "little")
-    elif encoding == "utf-16":
+    if encoding == "utf-16":
         return _utf16_ne_decode(buf)
-    elif encoding == "utf-32be":
+    if encoding == "utf-32be":
         return _utf32_e_decode(buf, "big")
-    elif encoding == "utf-32le":
+    if encoding == "utf-32le":
         return _utf32_e_decode(buf, "little")
-    elif encoding == "utf-32":
+    if encoding == "utf-32":
         return _utf32_ne_decode(buf)
     raise UnicodeDecodeException(f"unknown encoding {encoding}")

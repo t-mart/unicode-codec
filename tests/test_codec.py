@@ -1,6 +1,7 @@
+"""Tests for unicodec"""
 import pytest
 
-from unicodec import decode, encode, UnicodeDecodeException, UnicodeEncodeException
+from unicodec import UnicodeDecodeException, UnicodeEncodeException, decode, encode
 
 ENCODINGS = [
     "utf-8",
