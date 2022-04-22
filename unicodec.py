@@ -294,23 +294,26 @@ def encode(string: str, encoding: str) -> bytes:
     The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
     utf-32le, utf-32.
     """
-    if encoding == "utf-8":
-        return _utf8_encode(string)
-    if encoding == "utf-8-sig":
-        return _utf8_sig_encode(string)
-    if encoding == "utf-16be":
-        return _utf16_e_encode(string, "big")
-    if encoding == "utf-16le":
-        return _utf16_e_encode(string, "little")
-    if encoding == "utf-16":
-        return _utf16_ne_encode(string)
-    if encoding == "utf-32be":
-        return _utf32_e_encode(string, "big")
-    if encoding == "utf-32le":
-        return _utf32_e_encode(string, "little")
-    if encoding == "utf-32":
-        return _utf32_ne_encode(string)
-    raise UnicodeEncodeException(f"Unknown encoding {encoding}")
+    match encoding:
+        case "utf-8":
+            enc = _utf8_encode(string)
+        case "utf-8-sig":
+            enc = _utf8_sig_encode(string)
+        case "utf-16be":
+            enc = _utf16_e_encode(string, "big")
+        case "utf-16le":
+            enc = _utf16_e_encode(string, "little")
+        case "utf-16":
+            enc = _utf16_ne_encode(string)
+        case "utf-32be":
+            enc = _utf32_e_encode(string, "big")
+        case "utf-32le":
+            enc = _utf32_e_encode(string, "little")
+        case "utf-32":
+            enc = _utf32_ne_encode(string)
+        case _:
+            raise UnicodeEncodeException(f"Unknown encoding {encoding}")
+    return enc
 
 
 def decode(buf: bytes, encoding: str) -> str:
@@ -322,20 +325,23 @@ def decode(buf: bytes, encoding: str) -> str:
     The supported encodings are: utf-8, utf-8-sig, utf-16be, utf-16le, utf-16, utf-32be,
     utf-32le, utf-32.
     """
-    if encoding == "utf-8":
-        return _utf8_decode(buf)
-    if encoding == "utf-8-sig":
-        return _utf8_sig_decode(buf)
-    if encoding == "utf-16be":
-        return _utf16_e_decode(buf, "big")
-    if encoding == "utf-16le":
-        return _utf16_e_decode(buf, "little")
-    if encoding == "utf-16":
-        return _utf16_ne_decode(buf)
-    if encoding == "utf-32be":
-        return _utf32_e_decode(buf, "big")
-    if encoding == "utf-32le":
-        return _utf32_e_decode(buf, "little")
-    if encoding == "utf-32":
-        return _utf32_ne_decode(buf)
-    raise UnicodeDecodeException(f"unknown encoding {encoding}")
+    match encoding:
+        case "utf-8":
+            dec = _utf8_decode(buf)
+        case "utf-8-sig":
+            dec = _utf8_sig_decode(buf)
+        case "utf-16be":
+            dec = _utf16_e_decode(buf, "big")
+        case "utf-16le":
+            dec = _utf16_e_decode(buf, "little")
+        case "utf-16":
+            dec = _utf16_ne_decode(buf)
+        case "utf-32be":
+            dec = _utf32_e_decode(buf, "big")
+        case "utf-32le":
+            dec = _utf32_e_decode(buf, "little")
+        case "utf-32":
+            dec = _utf32_ne_decode(buf)
+        case _:
+            raise UnicodeDecodeException(f"Unknown encoding {encoding}")
+    return dec
