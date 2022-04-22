@@ -9,8 +9,17 @@ from typing import Literal
 
 _ByteOrderT = Literal["big", "little"]
 
-_UTF_8_CONT_MASK = (1 << 6) - 1  # 0b0011_111
-_UTF_8_CONT_LEAD = 1 << 7  # 0b1000_0000
+_DEFAULT_BYTE_ORDER: _ByteOrderT = "little"
+
+_UTF_8_CONT_MASK = 0b0011_1111
+_UTF_8_CONT_START = 0b1000_0000
+_UTF_8_CONT_RANGE = range(_UTF_8_CONT_START, _UTF_8_CONT_START + _UTF_8_CONT_MASK + 1)
+_UTF_8_TWO_BYTE_START = 0b1100_0000
+_UTF_8_TWO_BYTE_MASK = 0b0001_1111
+_UTF_8_THREE_BYTE_START = 0b1110_0000
+_UTF_8_THREE_BYTE_MASK = 0b0000_1111
+_UTF_8_FOUR_BYTE_START = 0b1111_0000
+_UTF_8_FOUR_BYTE_MASK = 0b0000_0111
 
 _UTF_8_BOM = b"\xef\xbb\xbf"
 _UTF_16_LE_BOM = b"\xff\xfe"
@@ -18,7 +27,15 @@ _UTF_16_BE_BOM = b"\xfe\xff"
 _UTF_32_LE_BOM = b"\xff\xfe\x00\x00"
 _UTF_32_BE_BOM = b"\x00\x00\xfe\xff"
 
-_DEFAULT_BYTE_ORDER: _ByteOrderT = "little"
+_HIGH_SURROGATE_START = 0xD800
+_LOW_SURROGATE_START = 0xDC00
+_SURROGATE_END = 0xE000
+_SURROGATE_RANGE = range(_HIGH_SURROGATE_START, _SURROGATE_END)
+_HIGH_SURROGATE_RANGE = range(_HIGH_SURROGATE_START, _LOW_SURROGATE_START)
+_LOW_SURROGATE_RANGE = range(_LOW_SURROGATE_START, _SURROGATE_END)
+_SURROGATE_OFFSET = 0x10000
+
+_MAX_CODEPOINT = 0x10FFFF
 
 
 class UnicodeException(Exception):
@@ -52,14 +69,14 @@ def _get_unit(
 
 def _ord_only_scalars(char: str) -> int:
     scalar = ord(char)
-    if 0xD800 <= scalar <= 0xDFFF:
+    if scalar in _SURROGATE_RANGE:
         raise EncodeException("Surrogates not allowed")
     return scalar
 
 
-def _check_valid_continuation(*units: int) -> None:
+def _check_valid_utf8_continuation(*units: int) -> None:
     for unit in units:
-        if unit < 0b1000_0000 or unit > 0b1011_1111:
+        if unit not in _UTF_8_CONT_RANGE:
             raise DecodeException("Invalid continuation byte")
 
 
@@ -70,19 +87,19 @@ def _utf8_encode(string: str) -> bytes:
         if codepoint <= 0x80:
             buffer.append(codepoint)
         elif codepoint <= 0x800:
-            unit1 = 0b1100_0000 | (codepoint >> 6)
-            unit2 = _UTF_8_CONT_LEAD | (codepoint & _UTF_8_CONT_MASK)
+            unit1 = _UTF_8_TWO_BYTE_START | (codepoint >> 6)
+            unit2 = _UTF_8_CONT_START | (codepoint & _UTF_8_CONT_MASK)
             buffer.extend([unit1, unit2])
         elif codepoint <= 0x10000:
-            unit1 = 0b1110_0000 | (codepoint >> 12)
-            unit2 = _UTF_8_CONT_LEAD | ((codepoint >> 6) & _UTF_8_CONT_MASK)
-            unit3 = _UTF_8_CONT_LEAD | (codepoint & _UTF_8_CONT_MASK)
+            unit1 = _UTF_8_THREE_BYTE_START | (codepoint >> 12)
+            unit2 = _UTF_8_CONT_START | ((codepoint >> 6) & _UTF_8_CONT_MASK)
+            unit3 = _UTF_8_CONT_START | (codepoint & _UTF_8_CONT_MASK)
             buffer.extend([unit1, unit2, unit3])
         else:
-            unit1 = 0b1111_0000 | (codepoint >> 18)
-            unit2 = _UTF_8_CONT_LEAD | ((codepoint >> 12) & _UTF_8_CONT_MASK)
-            unit3 = _UTF_8_CONT_LEAD | ((codepoint >> 6) & _UTF_8_CONT_MASK)
-            unit4 = _UTF_8_CONT_LEAD | (codepoint & _UTF_8_CONT_MASK)
+            unit1 = _UTF_8_FOUR_BYTE_START | (codepoint >> 18)
+            unit2 = _UTF_8_CONT_START | ((codepoint >> 12) & _UTF_8_CONT_MASK)
+            unit3 = _UTF_8_CONT_START | ((codepoint >> 6) & _UTF_8_CONT_MASK)
+            unit4 = _UTF_8_CONT_START | (codepoint & _UTF_8_CONT_MASK)
             buffer.extend([unit1, unit2, unit3, unit4])
     return bytes(buffer)
 
@@ -101,21 +118,23 @@ def _utf8_decode(sequence: bytes) -> str:
         except DecodeException:
             break  # if we're here, we've decoded a number of complete codepoints
 
-        if unit1 & 0b1000_0000 == 0:
+        if unit1 & 0x80 == 0:
             codepoints.append(unit1)
-        elif 0b1100_0010 <= unit1 <= 0b1101_1111:
+        elif unit1 in range(0xC2, 0xE0):
             # The lower bound of this condition would seem to be 0b1100_0000 according
             # to the 0b110x_xxxx format found in reference material. But in truth, the
             # lower bound is 0b1100_0010 because for anything lower only generates
             # codepoints of at most 7 bits, so they should be single unit sequences.
             unit2 = _get_unit(seq_it, 1)
-            _check_valid_continuation(unit2)
+            _check_valid_utf8_continuation(unit2)
 
-            codepoint = ((unit1 & 0b0001_1111) << 6) | (unit2 & _UTF_8_CONT_MASK)
+            codepoint = ((unit1 & _UTF_8_TWO_BYTE_MASK) << 6) | (
+                unit2 & _UTF_8_CONT_MASK
+            )
             codepoints.append(codepoint)
-        elif 0xE0 <= unit1 <= 0xEF:
+        elif unit1 in range(0xE0, 0xF0):
             unit2, unit3 = [_get_unit(seq_it, 1) for _ in range(2)]
-            _check_valid_continuation(unit2, unit3)
+            _check_valid_utf8_continuation(unit2, unit3)
 
             # ill-formed cases
             if unit1 == 0xE0 and unit2 < 0xA0:
@@ -128,15 +147,15 @@ def _utf8_decode(sequence: bytes) -> str:
                 )
 
             codepoint = (
-                ((unit1 & 0b0000_1111) << 12)
+                ((unit1 & _UTF_8_THREE_BYTE_MASK) << 12)
                 | ((unit2 & _UTF_8_CONT_MASK) << 6)
                 | (unit3 & _UTF_8_CONT_MASK)
             )
             codepoints.append(codepoint)
             continue
-        elif 0b1111_0000 <= unit1 <= 0b1111_0100:
+        elif unit1 in range(0xF0, 0xF5):
             unit2, unit3, unit4 = [_get_unit(seq_it, 1) for _ in range(3)]
-            _check_valid_continuation(unit2, unit3, unit4)
+            _check_valid_utf8_continuation(unit2, unit3, unit4)
 
             # ill-formed cases
             if unit1 == 0xF0 and unit2 < 0x90:
@@ -149,7 +168,7 @@ def _utf8_decode(sequence: bytes) -> str:
                 )
 
             codepoint = (
-                ((unit1 & 0b0000_0111) << 18)
+                ((unit1 & _UTF_8_FOUR_BYTE_MASK) << 18)
                 | ((unit2 & _UTF_8_CONT_MASK) << 12)
                 | ((unit3 & _UTF_8_CONT_MASK) << 6)
                 | (unit4 & _UTF_8_CONT_MASK)
@@ -171,12 +190,12 @@ def _utf16_e_encode(string: str, byteorder: _ByteOrderT) -> bytes:
     buffer = []
     for char in string:
         codepoint = _ord_only_scalars(char)
-        if codepoint < 0x10000:
+        if codepoint < _SURROGATE_OFFSET:
             buffer.append(codepoint.to_bytes(2, byteorder))
         else:
-            shifted = codepoint - 0x10000
-            unit1 = 0xD800 + (shifted >> 10)
-            unit2 = 0xDC00 + (shifted & 0b0011_1111_1111)
+            shifted = codepoint - _SURROGATE_OFFSET
+            unit1 = _HIGH_SURROGATE_START + (shifted >> 10)
+            unit2 = _LOW_SURROGATE_START + (shifted & 0b0011_1111_1111)
             buffer.extend(unit.to_bytes(2, byteorder) for unit in [unit1, unit2])
 
     return b"".join(buffer)
@@ -200,16 +219,18 @@ def _utf16_e_decode(sequence: bytes, byteorder: _ByteOrderT) -> str:
         except DecodeException:
             break  # if we're here, we're finished processing the buffer
 
-        if 0xD800 <= unit1 <= 0xDC00:
+        if unit1 in _HIGH_SURROGATE_RANGE:
             unit2 = _get_unit(seq_it, 2, byteorder=byteorder)
             if unit2 < 0xDC00 or unit2 > 0xDFFF:
                 raise DecodeException("Invalid low surrogate")
             codepoint = (
-                0x10000 + ((unit1 & 0b11_1111_1111) << 10) + (unit2 & 0b11_1111_1111)
+                _SURROGATE_OFFSET
+                + ((unit1 & 0b11_1111_1111) << 10)
+                + (unit2 & 0b11_1111_1111)
             )
 
             codepoints.append(codepoint)
-        elif 0xDC00 <= unit1 <= 0xDFFF:
+        elif unit1 in _LOW_SURROGATE_RANGE:
             raise DecodeException("Invalid high surrogate")
         else:
             codepoints.append(unit1)
@@ -261,9 +282,9 @@ def _utf32_e_decode(sequence: bytes, byteorder: _ByteOrderT) -> str:
             break  # if we're here, we're finished processing the buffer
 
         # ill-formed cases
-        if 0xD800 <= codepoint <= 0xDFFF:
+        if codepoint in _SURROGATE_RANGE:
             raise DecodeException(f"Can't decode surrogate {hex(codepoint)}")
-        if 0x10FFFF < codepoint:
+        if codepoint > _MAX_CODEPOINT:
             raise DecodeException(f"Codepoint too large: {hex(codepoint)}")
 
         codepoints.append(codepoint)
