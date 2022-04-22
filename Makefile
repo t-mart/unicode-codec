@@ -1,7 +1,7 @@
-src-paths = codec.py tests
+src-paths = unicodec.py tests
 
 .PHONY: all
-all: isort black flake8 pylint mypy
+all: isort black flake8 pylint mypy all
 
 .PHONY: mypy
 mypy:
@@ -22,3 +22,7 @@ pylint:
 .PHONY: black
 black:
 	black $(src-paths)
+
+.PHONY: test
+test:
+	pytest --cov=unicodec tests/
