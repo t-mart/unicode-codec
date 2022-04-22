@@ -1,7 +1,7 @@
 src-paths = unicodec.py tests
 
 .PHONY: all
-all: isort black flake8 pylint mypy all
+all: isort black flake8 pylint mypy test
 
 .PHONY: mypy
 mypy:
