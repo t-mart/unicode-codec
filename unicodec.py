@@ -91,13 +91,13 @@ def _utf8_sig_encode(string: str) -> bytes:
     return _UTF_8_BOM + _utf8_encode(string)
 
 
-def _utf8_decode(buf: bytes) -> str:
+def _utf8_decode(sequence: bytes) -> str:
     codepoints = []
-    buf_it = iter(buf)
+    seq_it = iter(sequence)
 
     while True:
         try:
-            unit1 = _get_unit(buf_it, 1)
+            unit1 = _get_unit(seq_it, 1)
         except DecodeException:
             break  # if we're here, we've decoded a number of complete codepoints
 
@@ -108,13 +108,13 @@ def _utf8_decode(buf: bytes) -> str:
             # to the 0b110x_xxxx format found in reference material. But in truth, the
             # lower bound is 0b1100_0010 because for anything lower only generates
             # codepoints of at most 7 bits, so they should be single unit sequences.
-            unit2 = _get_unit(buf_it, 1)
+            unit2 = _get_unit(seq_it, 1)
             _check_valid_continuation(unit2)
 
             codepoint = ((unit1 & 0b0001_1111) << 6) | (unit2 & _UTF_8_CONT_MASK)
             codepoints.append(codepoint)
         elif 0xE0 <= unit1 <= 0xEF:
-            unit2, unit3 = [_get_unit(buf_it, 1) for _ in range(2)]
+            unit2, unit3 = [_get_unit(seq_it, 1) for _ in range(2)]
             _check_valid_continuation(unit2, unit3)
 
             # ill-formed cases
@@ -135,7 +135,7 @@ def _utf8_decode(buf: bytes) -> str:
             codepoints.append(codepoint)
             continue
         elif 0b1111_0000 <= unit1 <= 0b1111_0100:
-            unit2, unit3, unit4 = [_get_unit(buf_it, 1) for _ in range(3)]
+            unit2, unit3, unit4 = [_get_unit(seq_it, 1) for _ in range(3)]
             _check_valid_continuation(unit2, unit3, unit4)
 
             # ill-formed cases
@@ -162,9 +162,9 @@ def _utf8_decode(buf: bytes) -> str:
     return "".join(chr(codepoint) for codepoint in codepoints)
 
 
-def _utf8_sig_decode(buf: bytes) -> str:
+def _utf8_sig_decode(sequence: bytes) -> str:
     """Remove the BOM if its there. Otherwise, decode as normal."""
-    return _utf8_decode(buf.removeprefix(_UTF_8_BOM))
+    return _utf8_decode(sequence.removeprefix(_UTF_8_BOM))
 
 
 def _utf16_e_encode(string: str, byteorder: _ByteOrderT) -> bytes:
@@ -190,18 +190,18 @@ def _utf16_ne_encode(string: str) -> bytes:
     return _UTF_16_LE_BOM + _utf16_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
-def _utf16_e_decode(buf: bytes, byteorder: _ByteOrderT) -> str:
+def _utf16_e_decode(sequence: bytes, byteorder: _ByteOrderT) -> str:
     codepoints = []
-    buf_it = iter(buf)
+    seq_it = iter(sequence)
 
     while True:
         try:
-            unit1 = _get_unit(buf_it, 2, byteorder=byteorder)
+            unit1 = _get_unit(seq_it, 2, byteorder=byteorder)
         except DecodeException:
             break  # if we're here, we're finished processing the buffer
 
         if 0xD800 <= unit1 <= 0xDC00:
-            unit2 = _get_unit(buf_it, 2, byteorder=byteorder)
+            unit2 = _get_unit(seq_it, 2, byteorder=byteorder)
             if unit2 < 0xDC00 or unit2 > 0xDFFF:
                 raise DecodeException("Invalid low surrogate")
             codepoint = (
@@ -250,13 +250,13 @@ def _utf32_ne_encode(string: str) -> bytes:
     return _UTF_32_LE_BOM + _utf32_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
-def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT) -> str:
+def _utf32_e_decode(sequence: bytes, byteorder: _ByteOrderT) -> str:
     codepoints = []
-    buf_it = iter(buf)
+    seq_it = iter(sequence)
 
     while True:
         try:
-            codepoint = _get_unit(buf_it, 4, byteorder=byteorder)
+            codepoint = _get_unit(seq_it, 4, byteorder=byteorder)
         except DecodeException:
             break  # if we're here, we're finished processing the buffer
 
@@ -271,7 +271,7 @@ def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT) -> str:
     return "".join(chr(c) for c in codepoints)
 
 
-def _utf32_ne_decode(buf: bytes) -> str:
+def _utf32_ne_decode(sequence: bytes) -> str:
     """
     Decode "utf-32" (no endian specified). If a BOM prefixes the text, respect it and
     remove it from the resulting string. Otherwise, assume little endian.
@@ -280,11 +280,11 @@ def _utf32_ne_decode(buf: bytes) -> str:
     in this case. See: https://stackoverflow.com/a/36550597/235992. I'm just following
     the Python stdlib.)
     """
-    if buf.startswith(_UTF_32_LE_BOM):
-        return _utf32_e_decode(buf.removeprefix(_UTF_32_LE_BOM), "little")
-    if buf.startswith(_UTF_32_BE_BOM):
-        return _utf32_e_decode(buf.removeprefix(_UTF_32_BE_BOM), "big")
-    return _utf32_e_decode(buf, _DEFAULT_BYTE_ORDER)
+    if sequence.startswith(_UTF_32_LE_BOM):
+        return _utf32_e_decode(sequence.removeprefix(_UTF_32_LE_BOM), "little")
+    if sequence.startswith(_UTF_32_BE_BOM):
+        return _utf32_e_decode(sequence.removeprefix(_UTF_32_BE_BOM), "big")
+    return _utf32_e_decode(sequence, _DEFAULT_BYTE_ORDER)
 
 
 def encode(string: str, encoding: str) -> bytes:
