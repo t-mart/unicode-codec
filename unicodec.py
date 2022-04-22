@@ -18,6 +18,8 @@ _UTF_16_BE_BOM = b"\xfe\xff"
 _UTF_32_LE_BOM = b"\xff\xfe\x00\x00"
 _UTF_32_BE_BOM = b"\x00\x00\xfe\xff"
 
+_DEFAULT_BYTE_ORDER: _ByteOrderT = "little"
+
 
 class UnicodeException(Exception):
     """Base class for exceptions"""
@@ -185,7 +187,7 @@ def _utf16_ne_encode(string: str) -> bytes:
     Encode "utf-16" (no endian specified). (We follow Python, which chooses little
     endian here with an appropriate BOM.)
     """
-    return _UTF_16_LE_BOM + _utf16_e_encode(string, "little")
+    return _UTF_16_LE_BOM + _utf16_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
 def _utf16_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
@@ -228,7 +230,7 @@ def _utf16_ne_decode(buf: bytes) -> str:
         return _utf16_e_decode(buf.removeprefix(_UTF_16_LE_BOM), "little")
     if buf.startswith(_UTF_16_BE_BOM):
         return _utf16_e_decode(buf.removeprefix(_UTF_16_BE_BOM), "big")
-    return _utf16_e_decode(buf, "little")
+    return _utf16_e_decode(buf, _DEFAULT_BYTE_ORDER)
 
 
 def _utf32_e_encode(string: str, byteorder: _ByteOrderT = "big") -> bytes:
@@ -245,7 +247,7 @@ def _utf32_ne_encode(string: str) -> bytes:
     Encode "utf-32" (no endian specified). (We follow Python, which chooses little
     endian here with an appropriate BOM.)
     """
-    return _UTF_32_LE_BOM + _utf32_e_encode(string, "little")
+    return _UTF_32_LE_BOM + _utf32_e_encode(string, _DEFAULT_BYTE_ORDER)
 
 
 def _utf32_e_decode(buf: bytes, byteorder: _ByteOrderT = "big") -> str:
@@ -282,7 +284,7 @@ def _utf32_ne_decode(buf: bytes) -> str:
         return _utf32_e_decode(buf.removeprefix(_UTF_32_LE_BOM), "little")
     if buf.startswith(_UTF_32_BE_BOM):
         return _utf32_e_decode(buf.removeprefix(_UTF_32_BE_BOM), "big")
-    return _utf32_e_decode(buf, "little")
+    return _utf32_e_decode(buf, _DEFAULT_BYTE_ORDER)
 
 
 def encode(string: str, encoding: str) -> bytes:
