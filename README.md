@@ -3,9 +3,11 @@
 A Unicode encoding and decoding implementation, written in Python. Specifically avoids using
 the standard library `str.encode` or `bytes.decode` functions, but other things are fair game.
 
+This was just a fun project to learn more about the Unicode schemes.
+
 ```python
 >>> import unicodec
->>> my_way = codec.encode('abc', 'utf-16be')
+>>> my_way = unicodec.encode('abc', 'utf-16be')
 >>> stdlib_way = "abc".encode('utf-16be')
 >>> my_way == stdlib_way
 True
@@ -27,9 +29,9 @@ The following schemes are supported:
 When encoding, the `utf-8-sig`, `utf-16`, and `utf-32` schemes prefix their outputs with byte order
 marks. For `utf-16` and `utf-32`, little-endian is chosen automatically.
 
-When decoding, the `utf-8-sig`, `utf-16`, and `utf-32` schemes these remove an initial byte order
-mark from the sequence if one exists (and the decoding respects the endianness of that BOM). If no
-byte order mark exists, little-endian is assumed.
+When decoding, the `utf-8-sig`, `utf-16`, and `utf-32` schemes remove an initial byte order
+mark from the sequence if one exists. For `utf-16` and `utf-32`, decoding respects the endianness
+of that byte order mark, or if it was not present, little-endian is assumed.
 
 The above affinity for little-endian above is a result of the lack of a prescription by the Unicode
 standard in this circumstance. See <https://stackoverflow.com/a/36550597/235992>.
@@ -50,5 +52,3 @@ the rules of the standard. Therefore, the following throw an exception:
 - Decoding a `utf-16` sequence with ill-formed high or low surrogate.
 
 Has a decent battery of tests that check all of the above.
-
-This was just a fun project to learn more about the Unicode schemes.
