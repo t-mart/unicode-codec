@@ -71,19 +71,11 @@ def test_decode_matches_stdlib(encoding: str, test_string: str) -> None:
 
 
 @pytest.mark.parametrize("encoding", ENCODINGS)
-def test_encode_surrogate_not_allowed(encoding: str) -> None:
+@pytest.mark.parametrize("surrogate", [0xD800, 0xDFFF])
+def test_encode_surrogate_not_allowed(encoding: str, surrogate: int) -> None:
     """Ensure surrogate scalars can't be encoded."""
-    # kinda hate this escape format allows surrogates to be created. AFAIK, this is the
-    # only way to create an invalid codepoint
-    surrogates = [
-        "\uD800",
-        "\uDFFF",
-        "\U0000D800",
-        "\U0000DFFF",
-    ]
-    for surrogate in surrogates:
-        with pytest.raises(EncodeException):
-            encode(surrogate, encoding)
+    with pytest.raises(EncodeException):
+        encode(chr(surrogate), encoding)
 
 
 @pytest.mark.parametrize(
@@ -188,17 +180,17 @@ def test_utf8_decode_missing_continuation(sequence: bytes) -> None:
 
 
 @pytest.mark.parametrize(
-    "buf,expected",
+    "seq,expected",
     [
         (UTF_8_BOM + b"a", "a"),
         (b"a", "a"),
     ],
 )
-def test_utf8sig_decode_with_bom(buf: bytes, expected: str) -> None:
+def test_utf8sig_decode_with_bom(seq: bytes, expected: str) -> None:
     """
     Test that text with a BOM (or not) is properly decoded when using the utf-8-sig
     """
-    actual = decode(buf, "utf-8-sig")
+    actual = decode(seq, "utf-8-sig")
 
     assert actual == expected
 
@@ -245,19 +237,19 @@ def test_utf16_decode_bad_surrogate(sequence: bytes, encoding: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "buf,expected",
+    "seq,expected",
     [
         (UTF_16_BE_BOM + b"\x00\x61", "a"),
         (UTF_16_LE_BOM + b"\x61\x00", "a"),
         (b"\x61\x00", "a"),
     ],
 )
-def test_utf16_decode_with_bom(buf: bytes, expected: str) -> None:
+def test_utf16_decode_with_bom(seq: bytes, expected: str) -> None:
     """
     Test that text with a BOM (or not) is properly decoded when using the non-endian
     utf-16.
     """
-    actual = decode(buf, "utf-16")
+    actual = decode(seq, "utf-16")
 
     assert actual == expected
 
@@ -289,19 +281,19 @@ def test_utf32_decode_too_large() -> None:
 
 
 @pytest.mark.parametrize(
-    "buf,expected",
+    "seq,expected",
     [
         (UTF_32_BE_BOM + b"\x00\x00\x00\x61", "a"),
         (UTF_32_LE_BOM + b"\x61\x00\x00\x00", "a"),
         (b"\x61\x00\x00\x00", "a"),
     ],
 )
-def test_utf32_decode_with_bom(buf: bytes, expected: str) -> None:
+def test_utf32_decode_with_bom(seq: bytes, expected: str) -> None:
     """
     Test that text with a BOM (or not) is properly decoded when using the non-endian
     utf-32.
     """
-    actual = decode(buf, "utf-32")
+    actual = decode(seq, "utf-32")
 
     assert actual == expected
 
